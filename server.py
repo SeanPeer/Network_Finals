@@ -20,29 +20,27 @@ def broadcast(message):
 def handle(client):
     selection = 0
     while True:
-        try:
-            message = client.recv(1024).decode()
-            partMsg = message.split(":")
+        message = client.recv(1024).decode()
+        partMsg = message.split(":")
 
-            if partMsg[1] == ' leave':
-                clientIndex = clients.index(client)
-                clients.remove(client)
-                client.close()
-                nickName = clientNickName[clientIndex]
-                broadcast(f'{nickName} has left the chat !'.encode())
-                clientNickName.remove(nickName)
-
-            else:
-                broadcast(message.encode())
-        except:
-            print('wrong place')
-            #     clientIndex = clients.index(client)
-            #     clients.remove(client)
-            #     client.close()
-            #     nickName = clientNickName[clientIndex]
-            #     broadcast(f'{nickName} has left the chat !'.encode())
-            #     clientNickName.remove(nickName)
+        if partMsg[1] == ' leave':
+            clientIndex = clients.index(client)
+            clients.remove(client)
+            client.close()
+            nickName = clientNickName[clientIndex]
+            broadcast(f'{nickName} has left the chat !'.encode())
+            clientNickName.remove(nickName)
             break
+        if partMsg[1] == ' get users':
+            names = str(clientNickName)
+            client.send(names.encode())
+            continue
+        if partMsg[1] == ' download':
+            download()
+
+        else:
+            broadcast(message.encode())
+
 
 
 def receive():
@@ -61,6 +59,10 @@ def receive():
 
         thread = threading.Thread(target=handle, args=(client,))
         thread.start()
+
+
+def download():
+    print("downloading..")
 
 
 print('Server is listening.........')
