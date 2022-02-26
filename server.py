@@ -21,22 +21,27 @@ def handle(client):
     selection = 0
     while True:
         try:
-            message = client.recv(1024)
-            if message == 'leave':
+            message = client.recv(1024).decode()
+            partMsg = message.split(":")
+
+            if partMsg[1] == ' leave':
                 clientIndex = clients.index(client)
                 clients.remove(client)
                 client.close()
                 nickName = clientNickName[clientIndex]
                 broadcast(f'{nickName} has left the chat !'.encode())
                 clientNickName.remove(nickName)
-            broadcast(message)
+
+            else:
+                broadcast(message.encode())
         except:
-            clientIndex = clients.index(client)
-            clients.remove(client)
-            client.close()
-            nickName = clientNickName[clientIndex]
-            broadcast(f'{nickName} has left the chat !'.encode())
-            clientNickName.remove(nickName)
+            print('wrong place')
+            #     clientIndex = clients.index(client)
+            #     clients.remove(client)
+            #     client.close()
+            #     nickName = clientNickName[clientIndex]
+            #     broadcast(f'{nickName} has left the chat !'.encode())
+            #     clientNickName.remove(nickName)
             break
 
 

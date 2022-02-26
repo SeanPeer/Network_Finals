@@ -3,8 +3,8 @@ import socket
 
 nick = input("choose a nickname : ")
 
-client = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-client.connect(('localhost',50005))
+client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+client.connect(('localhost', 50005))
 
 
 def receive():
@@ -20,13 +20,18 @@ def receive():
             client.close()
             break
 
+
 def write():
-        message = f'{nick}: {input("")}'
+    while True:
+        msgInput = input("")
+        message = f'{nick}: {msgInput}'
         client.send(message.encode())
+        if msgInput == "leave":
+            client.close()
+
 
 receive_thread = threading.Thread(target=receive)
 receive_thread.start()
 
 write_thread = threading.Thread(target=write)
 write_thread.start()
-
