@@ -31,16 +31,33 @@ def handle(client):
             broadcast(f'{nickName} has left the chat !'.encode())
             clientNickName.remove(nickName)
             break
+
         if partMsg[1] == ' get users':
             names = str(clientNickName)
             client.send(names.encode())
             continue
+
+        #  connect to user, avi, the message
+        if " connect to user" in partMsg[1]:
+            msg = partMsg[1].split(", ")
+            nickNibour = msg[1]
+            if nickNibour in clientNickName:
+                nibourIndex = clientNickName.index(nickNibour)
+                neighbourClient = clients[nibourIndex]
+                neighbourClient.send(msg[2].encode())
+                break
+
+        # need to see if to send to self too
+        if " send to all, " in partMsg[1]:
+            msg = partMsg[1].split("send to all, ")
+            broadcast(msg[1].encode())
+            break;
+
         if partMsg[1] == ' download':
             download()
 
         else:
             broadcast(message.encode())
-
 
 
 def receive():
