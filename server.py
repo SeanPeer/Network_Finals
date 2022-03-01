@@ -51,7 +51,7 @@ def handle(client):
         if " send to all, " in partMsg[1]:
             msg = partMsg[1].split("send to all, ")
             broadcast(msg[1].encode())
-            break;
+            break
 
         if partMsg[1] == ' download':
             download()

@@ -2,8 +2,12 @@ import threading
 import socket
 import sys
 from tkinter import *
+import os
 
 nick = ""
+userInputMsg = ""
+msgInput = ""
+
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.connect(('localhost', 50005))
 
@@ -25,12 +29,17 @@ def receive():
 
 def write():
     while True:
-        msgInput = input("")
-        message = f'{nick}: {msgInput}'
-        client.send(message.encode())
-        if msgInput == "leave":
-            client.close()
-            sys.exit()
+        global msgInput
+        # msgInput = input("")
+
+        if userInputMsg != "":
+            if msgInput != userInputMsg:
+                msgInput = userInputMsg
+                message = f'{nick}: {msgInput}'
+                client.send(message.encode())
+                if msgInput == "leave":
+                    client.close()
+                    sys.exit()
 
 
 def start_client(nickname):
@@ -98,11 +107,46 @@ class GUI:
 
         self.go.place(relx=0.4,
                       rely=0.55)
+
         self.Window.mainloop()
 
+    # Chat window
     def goAhead(self, name):
+        global userInputMsg
+
         self.login.destroy()
         start_client(name)
+
+        frame = Tk()
+        frame.title("TextBox Input")
+        frame.geometry('1000x600')
+
+        # Function for getting Input
+        # from textbox and printing it
+        # at label widget
+
+        def getInput():
+            global userInputMsg
+            userInputMsg = inputTxtMsg.get(1.0, "end-1c")
+            lbl.config(text="Provided Input: " + userInputMsg)
+
+        # TextBox Creation message
+        inputTxtMsg = Text(frame,
+                           height=5,
+                           width=20)
+
+        inputTxtMsg.pack()
+
+        # send message Button Creation
+        sendMsgButton = Button(frame,
+                               text="message",
+                               command=getInput)
+        sendMsgButton.pack()
+
+        # Label Creation
+        lbl = Label(frame, text="")
+        lbl.pack()
+        frame.mainloop()
 
         # self.layout(name)
 
