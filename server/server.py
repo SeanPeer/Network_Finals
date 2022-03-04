@@ -19,13 +19,14 @@ def broadcast(message):
     for client in clients:
         client.send(message)
 
-
-# if the file name exists in the server's path - send its content , else - return does not exists.
+# checking if the given file name from client exists in server folder - if yes - send its content
 def read_file(filename):
     if os.path.exists(filename):
         with open(filename, 'rb') as f:
             filecontent = f.read()
+
         return filecontent
+
     else:
         return None
 
@@ -47,7 +48,6 @@ def handle(client):
             names = str(clientNickName)
             client.send(names.encode())
             continue
-
         #  connect to user, avi, the message
         if " connect to user" in partMsg[1]:
             msg = partMsg[1].split(", ")
@@ -57,24 +57,22 @@ def handle(client):
                 neighbourClient = clients[nibourIndex]
                 neighbourClient.send(msg[2].encode())
                 break
-
         # need to see if to send to self too
         if " send to all, " in partMsg[1]:
             msg = partMsg[1].split("send to all, ")
             broadcast(msg[1].encode())
             break
-
         if 'download' in partMsg[1]:
             filename = partMsg[1].split(" ")[-1].strip()
             filecontent = read_file(filename)
-            if filecontent: 
+            if filecontent:
                 client.send(f"DOWNLOAD {filename}".encode())
-                download(filecontent)
+                port = int(client.recv(1024).decode())
+                download(filecontent, port)
                 print(f"file '{filename}' sent to the client")
-
             else:
-                client.send( f"file '{filename}' not found at server".encode() )
-                print(f"file '{filename}' not found at server")
+                client.send(f"file '{filename}' is not found at the server's folder".encode())
+                print(f"file '{filename}' is not found at the server's folder")
 
         else:
             broadcast(message.encode())
@@ -98,51 +96,53 @@ def receive():
         thread.start()
 
 
-# Function for sending the client the file he asked for
-def download(filecontent):
+# sending the client the file he asked
+def download(filecontent, port):
 
     PACK_SIZE = 512
 
-    # Creating an header for each packet contains its number and the content itself
+    # make all packet contain an header of sequence number and its content
     def udp_packet(id, content):
         packet = {'seqnum': id, 'content': content}
+        # pickle is used to turn content into bytes
         packet = pickle.dumps(packet)
         return packet
 
-    # sending each packet
+    # send the specific packet to a specific client - we shall know which packet is it because of the sequence
     def send_packet(udpsock, address, datatosend, seqnum):
-            flag = True
-            while flag:
-                packet = udp_packet(seqnum, datatosend)
-                udpsock.sendto(packet, address)
-                
-                try:
-                    ack, _ = udpsock.recvfrom(PACK_SIZE)
-                    if int(pickle.loads(ack)) == seqnum: 
-                        flag = False
-                except Exception as e:
-                    print(f"Timed Out: Acknowledgement not received for '{seqnum}' ")
-                    print(f"resending packet '{seqnum}'")
-
+        flag = True
+        while flag:
+            # create packet
+            packet = udp_packet(seqnum, datatosend)
+            udpsock.sendto(packet, address)
+            try:
+                ack, _ = udpsock.recvfrom(PACK_SIZE)
+                if int(pickle.loads(ack)) == seqnum:
+                    flag = False
+            except Exception as e:
+                print(f"Timed Out: Acknowledgement not received for '{seqnum}' ")
+                print(f"resending packet '{seqnum}'")
+    # create UDP socket
     udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    # setting a timeout for socket
     udp_sock.settimeout(3.0)
-    
-    addr = ("127.0.0.1", 50000)
-    seqnumber = randint(0, 4096)
+
+    address = ("127.0.0.1", port)
+    sequence = randint(0, 4096)
     stop = False
     while stop is False:
-        if len(filecontent)+4 > PACK_SIZE:
+        if len(filecontent) + 4 > PACK_SIZE:
             data = filecontent[:PACK_SIZE]
-            send_packet(udp_sock, addr, data, seqnumber)
+            send_packet(udp_sock, address, data, sequence)
             filecontent = filecontent[PACK_SIZE:]
         else:
+            # make the file content out of range for sure
             filecontent += b"yyyy"
-            send_packet(udp_sock, addr, filecontent, seqnumber)
+            send_packet(udp_sock, address, filecontent, sequence)
             stop = True
-        seqnumber += 1
+        sequence += 1
 
     udp_sock.close()
-
 
 
 print('Server is listening.........')

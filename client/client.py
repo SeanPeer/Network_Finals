@@ -1,17 +1,26 @@
 import pickle
+from random import randint
 import threading
 import socket
 import sys
 from tkinter import *
-import os
-
 
 nick = ""
-userInputMsg = ""
-msgInput = ""
-
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-udp_port = 50000
+
+
+def init_udp_client():
+    """ create udp client socket from any available port """
+    while True:
+        try:
+            port = randint(1024, 49152)
+            udp_client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            udp_client.bind(('127.0.0.1', port))
+            return udp_client, port
+        except:
+            pass
+
+
 client.connect(('127.0.0.1', 50005))
 
 
@@ -21,11 +30,13 @@ def receive():
             message = client.recv(1024).decode()
             if message == 'NICK':
                 client.send(nick.encode())
-            
+
             elif message.startswith('DOWNLOAD'):
                 filename = message.split(" ")[-1].strip()
-                download(filename)
-            
+                udp_client, port = init_udp_client()
+                client.send(f"{port}".encode())
+                download(filename, udp_client)
+
             else:
                 print(message)
         except:
@@ -35,51 +46,54 @@ def receive():
             break
 
 
-def download(filename):
+def download(filename, udp_client):
     def write_file(filecontent):
         with open(filename, "wb") as f:
             f.write(filecontent)
 
     PACK_SIZE = 557
-    udp_client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    udp_client.bind(('127.0.0.1', udp_port)) 
+
     received_bytes = {}
     while True:
+
         packet, saddr = udp_client.recvfrom(PACK_SIZE)
-        if len(packet) == 0 :
+        if len(packet) == 0:
             break
 
         else:
             packet = pickle.loads(packet)
             seqnum = packet.get("seqnum")
-            content = packet.get("content") 
+            content = packet.get("content")
             udp_client.sendto(pickle.dumps(seqnum), saddr)
 
+            # if the packet has a tail - clean the end of the packet from the tail and receive content
             if content[-4:] == b"yyyy":
                 content = content[:-4]
                 received_bytes[seqnum] = content
                 break
-            
+            # keep receive cuz its not the end
             else:
                 received_bytes[seqnum] = content
 
     udp_client.close()
-    write_file( b"".join(received_bytes.values()) )
+    write_file(b"".join(received_bytes.values()))
     print(f"'{filename}' downloaded successfully")
+
 
 def write():
     while True:
-        global msgInput
-        # msgInput = input("")
+        msgInput = input("")
+        if "download" in msgInput:
+            message = f'{nick}: {msgInput}'
 
-        if userInputMsg != "":
-            if msgInput != userInputMsg:
-                msgInput = userInputMsg
-                message = f'{nick}: {msgInput}'
-                client.send(message.encode())
-                if msgInput == "leave":
-                    client.close()
-                    sys.exit()
+        else:
+            message = f'{nick}: {msgInput}'
+
+        client.send(message.encode())
+        if msgInput == "leave":
+            client.close()
+            sys.exit()
+            break
 
 
 def start_client(nickname):
@@ -92,9 +106,8 @@ def start_client(nickname):
     write_thread = threading.Thread(target=write)
     write_thread.start()
 
-    # GUI class for the chat
 
-
+# GUI class for the chat
 class GUI:
     def __init__(self):
         # chat window which is currently hidden
@@ -148,46 +161,11 @@ class GUI:
 
         self.go.place(relx=0.4,
                       rely=0.55)
-
         self.Window.mainloop()
 
-    # Chat window
     def goAhead(self, name):
-        global userInputMsg
-
         self.login.destroy()
         start_client(name)
-
-        frame = Tk()
-        frame.title("TextBox Input")
-        frame.geometry('1000x600')
-
-        # Function for getting Input
-        # from textbox and printing it
-        # at label widget
-
-        def getInput():
-            global userInputMsg
-            userInputMsg = inputTxtMsg.get(1.0, "end-1c")
-            lbl.config(text="Provided Input: " + userInputMsg)
-
-        # TextBox Creation message
-        inputTxtMsg = Text(frame,
-                           height=5,
-                           width=20)
-
-        inputTxtMsg.pack()
-
-        # send message Button Creation
-        sendMsgButton = Button(frame,
-                               text="message",
-                               command=getInput)
-        sendMsgButton.pack()
-
-        # Label Creation
-        lbl = Label(frame, text="")
-        lbl.pack()
-        frame.mainloop()
 
         # self.layout(name)
 
