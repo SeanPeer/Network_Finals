@@ -2,6 +2,7 @@ import os
 import pickle
 import socket
 import threading
+import glob
 from random import randint
 
 host = '127.0.0.1'
@@ -48,6 +49,9 @@ def handle(client):
             names = str(clientNickName)
             client.send(names.encode())
             continue
+        if "get files" in partMsg[1]:
+            files = str(os.listdir(os.path.abspath(os.getcwd())))
+            client.send(files.encode())
         #  connect to user, avi, the message
         if " connect to user" in partMsg[1]:
             msg = partMsg[1].split(", ")
@@ -146,4 +150,6 @@ def download(filecontent, port):
 
 
 print('Server is listening.........')
+print(os.path.abspath(os.getcwd()))
+print(os.listdir(os.path.abspath(os.getcwd())))
 receive()
